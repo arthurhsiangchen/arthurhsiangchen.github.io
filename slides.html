@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Detection Tools — BNBU Research Presentation</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f3ef;
+    --bg-dark: #2c2f33;
+    --text: #2c2f33;
+    --text-light: #6b7280;
+    --accent: #5b7a6b;
+    --accent-light: #8fac9b;
+    --accent-warm: #c4956a;
+    --card: #ffffff;
+    --highlight: #e8d5c0;
+    --red-soft: #c0616b;
+    --blue-soft: #6b8fb5;
+    --green-soft: #7ba58a;
+    --purple-soft: #9b8ec4;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  .slide {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 5vh 8vw;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    pointer-events: none;
+  }
+
+  .slide.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  /* Slide counter */
+  .slide-counter {
+    position: fixed;
+    bottom: 2.5vh;
+    right: 4vw;
+    font-size: 0.85rem;
+    color: var(--text-light);
+    font-weight: 400;
+    z-index: 100;
+    letter-spacing: 0.05em;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-warm));
+    transition: width 0.5s ease;
+    z-index: 100;
+  }
+
+  /* Navigation hint */
+  .nav-hint {
+    position: fixed;
+    bottom: 2.5vh;
+    left: 4vw;
+    font-size: 0.75rem;
+    color: var(--text-light);
+    opacity: 0.5;
+    z-index: 100;
+  }
+
+  /* ==================== TYPOGRAPHY ==================== */
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    color: var(--text);
+  }
+
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+
+  .subtitle {
+    font-size: clamp(0.9rem, 1.5vw, 1.1rem);
+    color: var(--text-light);
+    text-align: center;
+    line-height: 1.6;
+    max-width: 700px;
+    font-weight: 300;
+  }
+
+  .section-label {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(91,122,107,0.08);
+    padding: 0.3em 1em;
+    border-radius: 20px;
+    margin-bottom: 1.2rem;
+  }
+
+  /* ==================== LAYOUT HELPERS ==================== */
+  .content-area {
+    width: 100%;
+    max-width: 1000px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    width: 100%;
+    max-width: 1000px;
+    align-items: center;
+  }
+
+  .text-left { text-align: left; }
+
+  .stat-card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 1.8rem 2rem;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.04);
+    text-align: center;
+  }
+
+  .stat-number {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat-number.warn { color: var(--red-soft); }
+  .stat-number.info { color: var(--blue-soft); }
+
+  .stat-label {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin-top: 0.5rem;
+    line-height: 1.4;
+    font-weight: 400;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 900px;
+    margin-top: 1.5rem;
+  }
+
+  .stats-row-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+    width: 100%;
+    max-width: 700px;
+    margin-top: 1.5rem;
+  }
+
+  .chart-container {
+    width: 100%;
+    max-width: 600px;
+    position: relative;
+  }
+
+  .chart-container-wide {
+    width: 100%;
+    max-width: 750px;
+    position: relative;
+  }
+
+  .key-point {
+    font-size: clamp(1.1rem, 2vw, 1.4rem);
+    color: var(--text);
+    text-align: center;
+    max-width: 800px;
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  .key-point strong {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .key-point em {
+    color: var(--red-soft);
+    font-style: normal;
+    font-weight: 500;
+  }
+
+  .quote-block {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+    color: var(--text);
+    text-align: center;
+    max-width: 750px;
+    line-height: 1.6;
+    font-weight: 500;
+    font-style: italic;
+    position: relative;
+    padding: 1rem 0;
+  }
+
+  .quote-block::before {
+    content: '"';
+    font-size: 4rem;
+    color: var(--accent-light);
+    position: absolute;
+    top: -1.5rem;
+    left: -1.5rem;
+    font-family: 'Playfair Display', serif;
+    opacity: 0.4;
+  }
+
+  .rq-list {
+    list-style: none;
+    max-width: 800px;
+    width: 100%;
+  }
+
+  .rq-list li {
+    padding: 1rem 1.5rem;
+    margin-bottom: 0.8rem;
+    background: var(--card);
+    border-radius: 12px;
+    border-left: 3px solid var(--accent);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.03);
+  }
+
+  .rq-list li strong {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .method-pills {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 1rem;
+  }
+
+  .pill {
+    background: var(--card);
+    border-radius: 30px;
+    padding: 0.7rem 1.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.04);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .pill-icon {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .references-list {
+    list-style: none;
+    max-width: 800px;
+    width: 100%;
+    text-align: left;
+  }
+
+  .references-list li {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin-bottom: 0.6rem;
+    line-height: 1.5;
+    padding-left: 1.5rem;
+    text-indent: -1.5rem;
+  }
+
+  /* ==================== DARK SLIDE ==================== */
+  .slide-dark {
+    background: var(--bg-dark);
+  }
+
+  .slide-dark h1,
+  .slide-dark h2 { color: #f5f3ef; }
+  .slide-dark .subtitle { color: #9ca3af; }
+  .slide-dark .key-point { color: #e5e7eb; }
+  .slide-dark .key-point strong { color: var(--accent-light); }
+  .slide-dark .key-point em { color: #e8a87c; }
+  .slide-dark .section-label { color: var(--accent-light); background: rgba(143,172,155,0.12); }
+  .slide-dark .quote-block { color: #e5e7eb; }
+  .slide-dark .quote-block::before { color: var(--accent-light); }
+
+  /* ==================== WARM ACCENT SLIDE ==================== */
+  .slide-warm {
+    background: linear-gradient(135deg, #f0e6da 0%, #f5f3ef 100%);
+  }
+
+  /* ==================== RESPONSIVE ==================== */
+  @media (max-width: 768px) {
+    .two-col { grid-template-columns: 1fr; gap: 1.5rem; }
+    .stats-row { grid-template-columns: 1fr; }
+    .slide { padding: 3vh 5vw; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== SLIDE 1: TITLE ========== -->
+<div class="slide slide-dark active" id="s1">
+  <h1>The Impact of AI Detection Tools<br>on BNBU Students' Writing Anxiety<br>and Coping Strategies</h1>
+  <p class="subtitle" style="margin-top: 2rem; font-size: 1rem;">EAP II Research Presentation</p>
+</div>
+
+<!-- ========== SLIDE 2: HOOK ========== -->
+<div class="slide" id="s2">
+  <div class="quote-block">
+    You spent a weekend writing an essay.<br>
+    You didn't use any AI.<br>
+    You submitted it.<br><br>
+    And then — the system says<br>
+    "This is AI-generated."
+  </div>
+  <p class="subtitle" style="margin-top: 2rem;">This is happening at BNBU.</p>
+</div>
+
+<!-- ========== SLIDE 3: BACKGROUND ========== -->
+<div class="slide" id="s3">
+  <span class="section-label">Background</span>
+  <h2>The Problem with AI Detection</h2>
+  <div class="stats-row-2" style="margin-top: 1.5rem;">
+    <div class="stat-card">
+      <p class="stat-label" style="margin-bottom: 0.8rem;">What are AIDTs?</p>
+      <p style="font-size: 0.9rem; color: var(--text); line-height: 1.6;">Software (e.g., Turnitin) used by universities to identify AI-generated content in student work</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label" style="margin-bottom: 0.8rem;">The Bias</p>
+      <p style="font-size: 0.9rem; color: var(--text); line-height: 1.6;">AIDTs produce <strong style="color:var(--red-soft)">high false-positive rates</strong> against non-native English speakers</p>
+      <p style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem;">(Liang et al., 2023)</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 4: RESEARCH QUESTIONS ========== -->
+<div class="slide" id="s4">
+  <span class="section-label">Research Questions</span>
+  <ul class="rq-list">
+    <li><strong>RQ1</strong> &mdash; To what extent do BNBU students experience or fear false-positive misjudgments?</li>
+    <li><strong>RQ2</strong> &mdash; How does awareness of AIDT biases impact writing anxiety?</li>
+    <li><strong>RQ3</strong> &mdash; What coping strategies do students adopt, and what motivates them?</li>
+  </ul>
+</div>
+
+<!-- ========== SLIDE 5: METHODOLOGY ========== -->
+<div class="slide slide-warm" id="s5">
+  <span class="section-label">Methodology</span>
+  <h2>How We Studied This</h2>
+  <div class="method-pills" style="margin-top: 1.5rem;">
+    <div class="pill"><span class="pill-icon" style="background: var(--accent);"></span> 39 BNBU undergraduates</div>
+    <div class="pill"><span class="pill-icon" style="background: var(--blue-soft);"></span> 14-item questionnaire</div>
+    <div class="pill"><span class="pill-icon" style="background: var(--accent-warm);"></span> 5-point Likert scale (SLWAI)</div>
+    <div class="pill"><span class="pill-icon" style="background: var(--purple-soft);"></span> Convenience sampling</div>
+    <div class="pill"><span class="pill-icon" style="background: var(--red-soft);"></span> Descriptive + Correlation analysis</div>
+  </div>
+  <p class="subtitle" style="margin-top: 2rem;"> Anxiety scale adapted from Cheng's (2004) SLWAI framework</p>
+</div>
+
+<!-- ========== SLIDE 6: RQ1 RESULTS ========== -->
+<div class="slide" id="s6">
+  <span class="section-label">RQ1 — False Positives</span>
+  <div class="two-col">
+    <div class="text-left">
+      <div class="stats-row" style="grid-template-columns: 1fr; gap: 1rem;">
+        <div class="stat-card">
+          <div class="stat-number warn">59%</div>
+          <div class="stat-label">reported being falsely flagged</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" style="color: var(--accent-warm);">97.4%</div>
+          <div class="stat-label">worried about future false positives</div>
+        </div>
+        <div class="stat-card" style="background: var(--bg-dark);">
+          <div class="stat-number" style="color: #f5f3ef; font-size: 2rem;">0</div>
+          <div class="stat-label" style="color: #9ca3af;">selected "Not worried at all"</div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-container">
+      <canvas id="chartWorry"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 7: RQ2 RESULTS ========== -->
+<div class="slide" id="s7">
+  <span class="section-label">RQ2 — Writing Anxiety</span>
+  <div class="two-col">
+    <div>
+      <div class="stat-card" style="margin-bottom: 1.5rem;">
+        <div class="stat-number">4.30<span style="font-size: 1.2rem; color: var(--text-light);"> / 5.0</span></div>
+        <div class="stat-label">Overall anxiety score (SD = 0.74)</div>
+      </div>
+      <p class="key-point" style="font-size: 0.95rem; text-align: left;">
+        <strong>Avoidance</strong> behavior scored highest.<br>
+        Students are shifting from<br>
+        "writing well" → <em>"avoiding being flagged"</em>
+      </p>
+    </div>
+    <div class="chart-container">
+      <canvas id="chartAnxiety"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 8: GROUP COMPARISON ========== -->
+<div class="slide slide-dark" id="s8">
+  <span class="section-label">RQ2 — Group Comparison</span>
+  <h2>False-positive experience<br>amplifies anxiety</h2>
+  <div class="stats-row-2" style="margin-top: 2rem;">
+    <div class="stat-card" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);">
+      <div class="stat-number" style="color: var(--red-soft);">4.54</div>
+      <div class="stat-label" style="color: #9ca3af;">Experienced false positives<br>(n = 23)</div>
+    </div>
+    <div class="stat-card" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);">
+      <div class="stat-number" style="color: var(--green-soft);">3.39</div>
+      <div class="stat-label" style="color: #9ca3af;">No false-positive experience<br>(n = 7)</div>
+    </div>
+  </div>
+  <p class="key-point" style="margin-top: 1.5rem; font-size: 1rem;">
+    <strong>t = 3.08</strong> &mdash; a statistically significant difference
+  </p>
+</div>
+
+<!-- ========== SLIDE 9: RQ3 RESULTS ========== -->
+<div class="slide" id="s9">
+  <span class="section-label">RQ3 — Coping Strategies</span>
+  <div class="two-col">
+    <div>
+      <div class="stats-row" style="grid-template-columns: 1fr; gap: 1rem;">
+        <div class="stat-card">
+          <div class="stat-number info">82.1%</div>
+          <div class="stat-label">used humanizer tools</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number warn">97.4%</div>
+          <div class="stat-label">changed writing habits</div>
+        </div>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-light); margin-top: 1rem; text-align: center;">
+        82.1% say their writing became <strong style="color: var(--red-soft);">less natural</strong>
+      </p>
+    </div>
+    <div class="chart-container">
+      <canvas id="chartStrategies"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 10: DISCUSSION — THE PARADOX ========== -->
+<div class="slide slide-dark" id="s10">
+  <span class="section-label">Discussion</span>
+  <h2 style="margin-bottom: 2rem;">The Paradox</h2>
+  <p class="key-point" style="font-size: clamp(1.1rem, 2vw, 1.35rem); line-height: 1.8;">
+    AI detection tools are designed to <strong>protect</strong> writing quality.<br><br>
+    But the data shows students are<br>
+    <em>deliberately degrading their own writing</em><br>
+    to avoid being flagged.<br><br>
+    The tool designed to protect writing...<br>
+    <strong>is damaging writing.</strong>
+  </p>
+  <p class="subtitle" style="margin-top: 1.5rem; font-size: 0.8rem;">(Balalle & Pannilage, 2025)</p>
+</div>
+
+<!-- ========== SLIDE 11: IMPLICATIONS ========== -->
+<div class="slide slide-warm" id="s11">
+  <span class="section-label">Implications & Limitations</span>
+  <div class="stats-row" style="grid-template-columns: 1fr 1fr 1fr; margin-top: 1rem;">
+    <div class="stat-card text-left" style="border-top: 3px solid var(--accent);">
+      <p style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--accent);">Shift approach</p>
+      <p style="font-size: 0.82rem; line-height: 1.5; color: var(--text);">From rigid detection to constructive AI integration</p>
+    </div>
+    <div class="stat-card text-left" style="border-top: 3px solid var(--accent-warm);">
+      <p style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--accent-warm);">Transparent systems</p>
+      <p style="font-size: 0.82rem; line-height: 1.5; color: var(--text);">Appeal mechanisms & process-based assessment</p>
+    </div>
+    <div class="stat-card text-left" style="border-top: 3px solid var(--blue-soft);">
+      <p style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--blue-soft);">Future research</p>
+      <p style="font-size: 0.82rem; line-height: 1.5; color: var(--text);">Larger samples, qualitative methods, longitudinal designs</p>
+    </div>
+  </div>
+  <p class="subtitle" style="margin-top: 1.5rem; font-size: 0.8rem;">
+    Limitation: N=39, 94.9% freshmen, cross-sectional design
+  </p>
+</div>
+
+<!-- ========== SLIDE 12: CLOSING + REFERENCES ========== -->
+<div class="slide slide-dark" id="s12">
+  <h2 style="margin-bottom: 1.5rem;">The question is no longer<br>"Are students using AI?"</h2>
+  <h1 style="color: var(--accent-light); font-size: clamp(1.5rem, 3vw, 2.2rem);">Are our detection tools<br>doing more harm than good?</h1>
+  <div style="margin-top: 3rem; text-align: left; max-width: 700px;">
+    <p style="font-size: 0.7rem; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.8rem;">References</p>
+    <ul class="references-list">
+      <li>Balalle, H. & Pannilage, U. (2025). AI technologies and academic integrity: A systematic review. <em>Journal of Academic Ethics</em>.</li>
+      <li>Cheng, Y.-S. (2004). A measure of second language writing anxiety. <em>Journal of Second Language Writing</em>, 13(4), 313–335.</li>
+      <li>Lazarus, R. S. & Folkman, S. (1984). <em>Stress, Appraisal, and Coping</em>. Springer.</li>
+      <li>Liang, W. et al. (2023). GPT detectors are biased against non-native English writers. <em>Patterns</em>, 4(7).</li>
+      <li>Perkins, M. et al. (2024). GenAI detection tools and academic integrity. <em>Intl. J. of Educational Integrity</em>, 20(9).</li>
+    </ul>
+  </div>
+  <p class="subtitle" style="margin-top: 2rem; font-size: 1.1rem; color: #e5e7eb;">Thank you. Questions?</p>
+</div>
+
+<!-- ========== NAVIGATION ========== -->
+<div class="slide-counter" id="counter">1 / 12</div>
+<div class="progress-bar" id="progress" style="width: 8.33%;"></div>
+<div class="nav-hint">← → or click to navigate</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+let current = 0;
+
+function goTo(n) {
+  if (n < 0 || n >= total) return;
+  slides[current].classList.remove('active');
+  current = n;
+  slides[current].classList.add('active');
+  document.getElementById('counter').textContent = `${current + 1} / ${total}`;
+  document.getElementById('progress').style.width = `${((current + 1) / total) * 100}%`;
+
+  // Render charts when their slide becomes active
+  if (current === 5) renderWorryChart();
+  if (current === 6) renderAnxietyChart();
+  if (current === 8) renderStrategiesChart();
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); goTo(current + 1); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(current - 1); }
+});
+
+document.addEventListener('click', (e) => {
+  if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+  else goTo(current - 1);
+});
+
+// ==================== CHARTS ====================
+
+let worryRendered = false;
+function renderWorryChart() {
+  if (worryRendered) return;
+  worryRendered = true;
+  new Chart(document.getElementById('chartWorry'), {
+    type: 'bar',
+    data: {
+      labels: ['Very\nworried', 'Somewhat\nworried', 'Slightly\nworried', 'Not worried\nat all'],
+      datasets: [{
+        data: [64.1, 33.3, 2.6, 0],
+        backgroundColor: ['#c0616b', '#c4956a', '#8fac9b', '#d1d5db'],
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: 'Worry About Future False Positives (%)', font: { family: 'Inter', size: 13, weight: '500' }, color: '#6b7280', padding: { bottom: 15 } }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 80, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+let anxietyRendered = false;
+function renderAnxietyChart() {
+  if (anxietyRendered) return;
+  anxietyRendered = true;
+  new Chart(document.getElementById('chartAnxiety'), {
+    type: 'bar',
+    data: {
+      labels: ['Avoidance\nBehavior', 'Cognitive\nAnxiety', 'Somatic\nAnxiety'],
+      datasets: [{
+        data: [4.49, 4.36, 4.00],
+        backgroundColor: ['#5b7a6b', '#6b8fb5', '#c4956a'],
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: 'Mean Anxiety Scores by Dimension', font: { family: 'Inter', size: 13, weight: '500' }, color: '#6b7280', padding: { bottom: 15 } }
+      },
+      scales: {
+        x: { beginAtZero: true, max: 5, ticks: { font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        y: { ticks: { font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+let strategiesRendered = false;
+function renderStrategiesChart() {
+  if (strategiesRendered) return;
+  strategiesRendered = true;
+  new Chart(document.getElementById('chartStrategies'), {
+    type: 'bar',
+    data: {
+      labels: ['Used\nhumanizer tools', 'Avoided "AI-like"\nvocabulary', 'Made writing\nless polished', 'Shortened\nsentences', 'Avoided\nem dashes'],
+      datasets: [{
+        data: [82.1, 76.9, 66.7, 53.8, 51.3],
+        backgroundColor: ['#6b8fb5', '#5b7a6b', '#c0616b', '#c4956a', '#9b8ec4'],
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: 'Coping Strategy Adoption (%)', font: { family: 'Inter', size: 13, weight: '500' }, color: '#6b7280', padding: { bottom: 15 } }
+      },
+      scales: {
+        x: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%', font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        y: { ticks: { font: { size: 10 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
